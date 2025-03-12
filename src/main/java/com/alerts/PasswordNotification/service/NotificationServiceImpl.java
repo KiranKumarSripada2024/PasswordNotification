@@ -23,7 +23,9 @@ public class NotificationServiceImpl implements NotificationService {
     @PostConstruct
     public void init() {
         // Initialize users with predefined data
-        LocalDate startDate = LocalDate.of(2025, 1, 1);
+        //LocalDate startDate = LocalDate.of(2025, 1, 1);
+        LocalDate startDate = LocalDate.now().minusDays(167);
+
 
         // Collibra CDIP users
         users.add(new User("EMDO.DAPIS.User", "Collibra CDIP", "PAT",
