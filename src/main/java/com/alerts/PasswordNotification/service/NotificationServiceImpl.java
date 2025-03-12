@@ -24,7 +24,7 @@ public class NotificationServiceImpl implements NotificationService {
     public void init() {
         // Initialize users with predefined data
         //LocalDate startDate = LocalDate.of(2025, 1, 1);
-        LocalDate startDate = LocalDate.now().minusDays(167);
+        LocalDate startDate = LocalDate.now().minusDays(165);
 
 
         // Collibra CDIP users

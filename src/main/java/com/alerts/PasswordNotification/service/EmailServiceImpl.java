@@ -60,8 +60,8 @@ public class EmailServiceImpl implements EmailService {
                 "This is a remainder to inform you that User account\n" +
                 "<<" + user.getUsername() + ">>password needs to be reset in next " +
                 notificationType.getDaysBeforeRotation() + " days.\n" +
-                "<<Application Name>>:" + user.getApplication() + "\n" +
-                "<<User Account>>:" + user.getUsername() + "\n" +
-                "<<Environment>>:" + user.getEnvironment();
+                "<<Application Name>>: " + user.getApplication() + "\n" +
+                "<<User Account>>: " + user.getUsername() + "\n" +
+                "<<Environment>>: " + user.getEnvironment();
     }
 }
