@@ -8,6 +8,8 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+
 @Component
 @EnableScheduling
 public class NotificationScheduler {
@@ -21,6 +23,12 @@ public class NotificationScheduler {
     @Scheduled(cron = "0 0 0 * * ?")
     public void checkPasswordRotations() {
         logger.info("Running daily password rotation check");
-        notificationService.checkAndSendNotifications();
+        Map<String, Boolean> result = notificationService.checkAndSendNotificationsWithResult();
+
+        if (result.get("firstNotification") || result.get("secondNotification")) {
+            logger.info("Daily check complete - notifications were sent");
+        } else {
+            logger.info("Daily check complete - no notifications were sent for today");
+        }
     }
 }

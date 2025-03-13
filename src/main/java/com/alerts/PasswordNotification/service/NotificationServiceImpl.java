@@ -12,7 +12,9 @@ import org.springframework.stereotype.Service;
 import jakarta.annotation.PostConstruct;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -77,7 +79,15 @@ public class NotificationServiceImpl implements NotificationService {
 
     @Override
     public void checkAndSendNotifications() {
+        checkAndSendNotificationsWithResult();
+    }
+
+    @Override
+    public Map<String, Boolean> checkAndSendNotificationsWithResult() {
         logger.info("Running notification check using UTC time...");
+
+        boolean firstNotificationSent = false;
+        boolean secondNotificationSent = false;
 
         for (User user : users) {
             // Only process users for the current environment
@@ -99,14 +109,21 @@ public class NotificationServiceImpl implements NotificationService {
             if (daysUntil == firstNotificationDays) {
                 logger.info("Sending first notification for user: {}", user.getUsername());
                 emailService.sendPasswordResetNotification(user, NotificationType.FIRST_NOTIFICATION);
+                firstNotificationSent = true;
             }
 
             // Send second notification exactly when days until rotation equals secondNotificationDays
             if (daysUntil == secondNotificationDays) {
                 logger.info("Sending second notification for user: {}", user.getUsername());
                 emailService.sendPasswordResetNotification(user, NotificationType.SECOND_NOTIFICATION);
+                secondNotificationSent = true;
             }
         }
+
+        Map<String, Boolean> result = new HashMap<>();
+        result.put("firstNotification", firstNotificationSent);
+        result.put("secondNotification", secondNotificationSent);
+        return result;
     }
 
     @Override

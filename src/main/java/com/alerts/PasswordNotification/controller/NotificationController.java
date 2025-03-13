@@ -8,10 +8,13 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/notifications")
@@ -20,6 +23,12 @@ public class NotificationController {
 
     @Autowired
     private NotificationService notificationService;
+
+    @Value("${notification.first.days}")
+    private int firstNotificationDays;
+
+    @Value("${notification.second.days}")
+    private int secondNotificationDays;
 
     @GetMapping("/users")
     @Operation(summary = "Get all users", description = "Returns all users in the current environment")
@@ -62,8 +71,28 @@ public class NotificationController {
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Notification check triggered successfully")
     })
-    public ResponseEntity<String> manualCheckNotifications() {
-        notificationService.checkAndSendNotifications();
-        return ResponseEntity.ok("Notification check triggered manually");
+    public ResponseEntity<Map<String, Object>> manualCheckNotifications() {
+        Map<String, Object> result = new HashMap<>();
+        Map<String, Boolean> notificationsSent = notificationService.checkAndSendNotificationsWithResult();
+
+        boolean anyNotificationsSent = notificationsSent.get("firstNotification") || notificationsSent.get("secondNotification");
+
+        if (anyNotificationsSent) {
+            result.put("status", "SUCCESS");
+            result.put("message", "Notifications check complete - emails have been sent");
+
+            if (notificationsSent.get("firstNotification")) {
+                result.put("firstNotification", "Sent " + firstNotificationDays + "-day notifications");
+            }
+
+            if (notificationsSent.get("secondNotification")) {
+                result.put("secondNotification", "Sent " + secondNotificationDays + "-day notifications");
+            }
+        } else {
+            result.put("status", "INFO");
+            result.put("message", "Checked for notifications but today is not a notification day for any user");
+        }
+
+        return ResponseEntity.ok(result);
     }
 }
