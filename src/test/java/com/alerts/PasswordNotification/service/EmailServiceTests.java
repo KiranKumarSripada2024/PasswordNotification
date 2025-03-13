@@ -1,5 +1,6 @@
 package com.alerts.PasswordNotification.service;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import com.alerts.PasswordNotification.model.NotificationType;
 import com.alerts.PasswordNotification.model.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,6 +10,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mail.MailSendException;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -58,7 +60,7 @@ public class EmailServiceTests {
                 "oracle-db-support@example.com"
         );
 
-        when(emailSender.createMimeMessage()).thenReturn(new MimeMessage((Session)null));
+        when(emailSender.createMimeMessage()).thenReturn(new MimeMessage((Session) null));
     }
 
     @Test
@@ -66,15 +68,11 @@ public class EmailServiceTests {
         Session session = Session.getInstance(new Properties());
         MimeMessage mimeMessage = new MimeMessage(session);
         when(emailSender.createMimeMessage()).thenReturn(mimeMessage);
-
         emailService.sendPasswordResetNotification(collibraUser, NotificationType.FIRST_NOTIFICATION);
-
         verify(emailSender, times(1)).send(any(MimeMessage.class));
-
         ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
         verify(emailSender).send(messageCaptor.capture());
         MimeMessage sentMessage = messageCaptor.getValue();
-
         assertNotNull(sentMessage);
     }
 
@@ -83,24 +81,24 @@ public class EmailServiceTests {
         Session session = Session.getInstance(new Properties());
         MimeMessage mimeMessage = new MimeMessage(session);
         when(emailSender.createMimeMessage()).thenReturn(mimeMessage);
-
         emailService.sendPasswordResetNotification(oracleUser, NotificationType.SECOND_NOTIFICATION);
-
         verify(emailSender, times(1)).send(any(MimeMessage.class));
-
         ArgumentCaptor<MimeMessage> messageCaptor = ArgumentCaptor.forClass(MimeMessage.class);
         verify(emailSender).send(messageCaptor.capture());
         MimeMessage sentMessage = messageCaptor.getValue();
-
         assertNotNull(sentMessage);
     }
 
     @Test
-    public void testHandleMessagingException() throws MessagingException {
-        doThrow(new MessagingException("Test exception")).when(emailSender).send(any(MimeMessage.class));
-
-        emailService.sendPasswordResetNotification(collibraUser, NotificationType.FIRST_NOTIFICATION);
-
-        verify(emailSender, times(1)).send(any(MimeMessage.class));
+    public void testHandleMessagingException() throws Exception {
+        Session session = Session.getInstance(new Properties());
+        MimeMessage mimeMessage = new MimeMessage(session);
+        when(emailSender.createMimeMessage()).thenReturn(mimeMessage);
+        doThrow(new MailSendException("Test exception"))
+                .when(emailSender).send(any(MimeMessage.class));
+        assertDoesNotThrow(() -> {
+            emailService.sendPasswordResetNotification(collibraUser, NotificationType.FIRST_NOTIFICATION);
+        });
+        verify(emailSender).send(any(MimeMessage.class));
     }
 }
