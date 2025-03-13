@@ -1,5 +1,6 @@
 package com.alerts.PasswordNotification.model;
 
+import com.alerts.PasswordNotification.util.DateUtils;
 import java.time.LocalDate;
 
 public class User {
@@ -73,10 +74,10 @@ public class User {
 
     public LocalDate getNextRotationDate() {
         // Calculate the next rotation date based on the start date and frequency
-        LocalDate currentDate = LocalDate.now();
+        LocalDate utcNow = DateUtils.getNowUtc();
         LocalDate nextRotation = startDate;
 
-        while (nextRotation.isBefore(currentDate) || nextRotation.isEqual(currentDate)) {
+        while (nextRotation.isBefore(utcNow) || nextRotation.isEqual(utcNow)) {
             nextRotation = nextRotation.plusDays(passwordRotationFrequency);
         }
 
@@ -84,7 +85,7 @@ public class User {
     }
 
     public int getDaysUntilRotation() {
-        return (int) java.time.temporal.ChronoUnit.DAYS.between(LocalDate.now(), getNextRotationDate());
+        return (int) java.time.temporal.ChronoUnit.DAYS.between(DateUtils.getNowUtc(), getNextRotationDate());
     }
 
     @Override

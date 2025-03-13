@@ -1,6 +1,5 @@
 package com.alerts.PasswordNotification.service;
 
-
 import com.alerts.PasswordNotification.model.NotificationType;
 import com.alerts.PasswordNotification.model.User;
 import org.slf4j.Logger;
@@ -25,6 +24,12 @@ public class EmailServiceImpl implements EmailService {
     @Value("${spring.mail.username}")
     private String senderEmail;
 
+    @Value("${notification.first.days}")
+    private int firstNotificationDays;
+
+    @Value("${notification.second.days}")
+    private int secondNotificationDays;
+
     @Override
     public void sendPasswordResetNotification(User user, NotificationType notificationType) {
         try {
@@ -37,8 +42,12 @@ public class EmailServiceImpl implements EmailService {
             helper.setText(createEmailBody(user, notificationType));
 
             emailSender.send(message);
+
+            int daysBeforeRotation = (notificationType == NotificationType.FIRST_NOTIFICATION) ?
+                    firstNotificationDays : secondNotificationDays;
+
             logger.info("Password reset notification sent for user: {} in environment: {}, {} days before rotation",
-                    user.getUsername(), user.getEnvironment(), notificationType.getDaysBeforeRotation());
+                    user.getUsername(), user.getEnvironment(), daysBeforeRotation);
         } catch (MessagingException e) {
             logger.error("Failed to send email notification", e);
         }
@@ -56,10 +65,13 @@ public class EmailServiceImpl implements EmailService {
         String supportTeam = user.getApplication().equals("Collibra CDIP") ?
                 "Collibra L2 Support Team" : "Oracle DB Support Team";
 
+        int daysBeforeRotation = (notificationType == NotificationType.FIRST_NOTIFICATION) ?
+                firstNotificationDays : secondNotificationDays;
+
         return "Hi " + supportTeam + ",\n\n" +
                 "This is a remainder to inform you that User account\n" +
                 "<<" + user.getUsername() + ">>password needs to be reset in next " +
-                notificationType.getDaysBeforeRotation() + " days.\n" +
+                daysBeforeRotation + " days.\n" +
                 "<<Application Name>>: " + user.getApplication() + "\n" +
                 "<<User Account>>: " + user.getUsername() + "\n" +
                 "<<Environment>>: " + user.getEnvironment();

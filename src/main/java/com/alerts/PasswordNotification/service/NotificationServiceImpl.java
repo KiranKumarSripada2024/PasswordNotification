@@ -3,7 +3,10 @@ package com.alerts.PasswordNotification.service;
 import com.alerts.PasswordNotification.model.NotificationType;
 import com.alerts.PasswordNotification.model.User;
 import com.alerts.PasswordNotification.util.DateUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
@@ -14,46 +17,94 @@ import java.util.stream.Collectors;
 
 @Service
 public class NotificationServiceImpl implements NotificationService {
-
+    private static final Logger logger = LoggerFactory.getLogger(NotificationServiceImpl.class);
     private final List<User> users = new ArrayList<>();
 
     @Autowired
     private EmailService emailService;
 
+    @Value("${application.environment}")
+    private String currentEnvironment;
+
+    @Value("${notification.first.days}")
+    private int firstNotificationDays;
+
+    @Value("${notification.second.days}")
+    private int secondNotificationDays;
+
+    @Value("${password.rotation.collibra}")
+    private int collibraRotationFrequency;
+
+    @Value("${password.rotation.oracle}")
+    private int oracleRotationFrequency;
+
+    @Value("${user.start.days.offset:-165}")
+    private int startDaysOffset;
+
     @PostConstruct
     public void init() {
-        // Initialize users with predefined data
-        //LocalDate startDate = LocalDate.of(2025, 1, 1);
-        LocalDate startDate = LocalDate.now().minusDays(165);
+        // Calculate start date using the offset, in UTC
+        LocalDate utcNow = DateUtils.getNowUtc();
+        LocalDate startDate = utcNow.plusDays(startDaysOffset);
 
+        logger.info("Initializing users with UTC start date: {}", startDate);
+        logger.info("Current environment: {}", currentEnvironment);
 
         // Collibra CDIP users
         users.add(new User("EMDO.DAPIS.User", "Collibra CDIP", "PAT",
-                90, startDate, "collibra-support@example.com"));
+                collibraRotationFrequency, startDate, "collibra-support@example.com"));
         users.add(new User("EMDO.DAPIS.User", "Collibra CDIP", "PROD",
-                90, startDate, "collibra-support@example.com"));
+                collibraRotationFrequency, startDate, "collibra-support@example.com"));
 
         // Oracle DB users
         users.add(new User("AEDMDA20ORC", "Oracle DB", "PAT",
-                180, startDate, "oracle-db-support@example.com"));
+                oracleRotationFrequency, startDate, "oracle-db-support@example.com"));
         users.add(new User("PEDMDA984ORAC", "Oracle DB", "PROD",
-                180, startDate, "oracle-db-support@example.com"));
+                oracleRotationFrequency, startDate, "oracle-db-support@example.com"));
+
+        for (User user : users) {
+            logger.info("User: {}, Next rotation: {}, Days until rotation: {}",
+                    user.getUsername(), user.getNextRotationDate(), user.getDaysUntilRotation());
+        }
     }
 
     @Override
     public List<User> getAllUsers() {
-        return new ArrayList<>(users);
+        return users.stream()
+                .filter(user -> user.getEnvironment().equals(currentEnvironment))
+                .collect(Collectors.toList());
     }
 
     @Override
     public void checkAndSendNotifications() {
+        logger.info("Running notification check using UTC time...");
+
         for (User user : users) {
+            // Only process users for the current environment
+            if (!user.getEnvironment().equals(currentEnvironment)) {
+                logger.debug("Skipping user {} in environment {}", user.getUsername(), user.getEnvironment());
+                continue;
+            }
+
             LocalDate nextRotationDate = user.getNextRotationDate();
 
-            for (NotificationType type : NotificationType.values()) {
-                if (DateUtils.isExactDaysBeforeRotation(nextRotationDate, type.getDaysBeforeRotation())) {
-                    emailService.sendPasswordResetNotification(user, type);
-                }
+            // Calculate days until rotation using UTC
+            LocalDate utcNow = DateUtils.getNowUtc();
+            long daysUntil = java.time.temporal.ChronoUnit.DAYS.between(utcNow, nextRotationDate);
+
+            logger.info("Checking user: {}, Next rotation: {}, Days until rotation: {} (UTC)",
+                    user.getUsername(), nextRotationDate, daysUntil);
+
+            // Send first notification exactly when days until rotation equals firstNotificationDays
+            if (daysUntil == firstNotificationDays) {
+                logger.info("Sending first notification for user: {}", user.getUsername());
+                emailService.sendPasswordResetNotification(user, NotificationType.FIRST_NOTIFICATION);
+            }
+
+            // Send second notification exactly when days until rotation equals secondNotificationDays
+            if (daysUntil == secondNotificationDays) {
+                logger.info("Sending second notification for user: {}", user.getUsername());
+                emailService.sendPasswordResetNotification(user, NotificationType.SECOND_NOTIFICATION);
             }
         }
     }
@@ -67,7 +118,8 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public User getUserByUsername(String username) {
         return users.stream()
-                .filter(user -> user.getUsername().equals(username))
+                .filter(user -> user.getUsername().equals(username) &&
+                        user.getEnvironment().equals(currentEnvironment))
                 .findFirst()
                 .orElse(null);
     }
@@ -75,7 +127,8 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public List<User> getUsersByApplication(String application) {
         return users.stream()
-                .filter(user -> user.getApplication().equals(application))
+                .filter(user -> user.getApplication().equals(application) &&
+                        user.getEnvironment().equals(currentEnvironment))
                 .collect(Collectors.toList());
     }
 }

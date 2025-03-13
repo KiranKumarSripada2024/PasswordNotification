@@ -4,6 +4,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
 
 @Configuration
-@PropertySource("classpath:application-${spring.profiles.active}.properties")
 public class AppConfig {
+    // Base configuration, now inherits properties properly from default and active profile
 }
